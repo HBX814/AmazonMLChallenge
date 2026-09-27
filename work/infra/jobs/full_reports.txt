@@ -1,0 +1,2 @@
+python infra/full_reports.py oof
+python infra/full_reports.py shift

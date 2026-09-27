@@ -1,0 +1,2 @@
+lscpu | grep -E "Model name|Flags" | cut -c1-400
+python infra/ce_bench.py

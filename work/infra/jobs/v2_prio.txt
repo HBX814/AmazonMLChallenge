@@ -1,0 +1,3 @@
+mkdir -p /vol/work_v2 && cp -r /vol/work/cache /vol/work/norm /vol/work/native_token_dict.tsv /vol/work_v2/ && ls -la /vol/work_v2 /vol/work_v2/norm
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v2 --out-dir /vol/output_v2 --config configs/submission_v2.json --n-jobs 14 --stage prepare
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v2 --out-dir /vol/output_v2 --config configs/submission_v2.json --n-jobs 14 --stage prio

@@ -1,0 +1,4 @@
+python infra/slices_from_norm.py geo --work work --country US --state "il" --name US_IL
+python .claude/skills/er-blocking-candidates/measure_blocking.py --slice US_IL --bench-dir work/dev/US_IL --out-dir work/dev/US_IL --native-dict work/native_token_dict.tsv --n-jobs 14 --threads 16 --cap 80
+python infra/slice_eval.py oof --dev work/dev --name US_IL --cap 30
+python infra/slice_eval.py oof --dev work/dev --name US_IL --cap 60

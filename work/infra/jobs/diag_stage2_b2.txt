@@ -1,0 +1,1 @@
+python infra/diag_stage2_b_train.py no_sib no_comp comp_oo within_only no_orig --grid small

@@ -1,0 +1,5 @@
+nproc
+python -c "import os,psutil;print('cpu_count', os.cpu_count(), 'affinity', len(os.sched_getaffinity(0)), 'mem_gib', round(psutil.virtual_memory().total/2**30,1))"
+cat /sys/fs/cgroup/cpu.max 2>/dev/null || true
+cd code/business_entity_resolution/src && python -c "import ber.io, ber.normalize_frame, ber.blocking, ber.features, ber.model, ber.decide, ber.outputs; import sparse_dot_topn, lightgbm; print('imports ok', lightgbm.__version__)"
+ls -la student_resource/dataset/train student_resource/dataset/test

@@ -1,0 +1,4 @@
+python infra/diag_stage2_g_write.py
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /vol/diag/stage2/matching_results_stage2.tsv --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /vol/diag/stage2/matching_results_stage2.tsv --candidate /vol/output_v3/candidate_pairs.tsv --test-dir /root/proj/student_resource/dataset/test || echo VALIDATION_RETURNED_NONZERO
+python code/business_entity_resolution/tools/check_submission.py --matching /vol/diag/stage2/matching_results_stage2.tsv --candidate /vol/output_v3/candidate_pairs.tsv --test-dir student_resource/dataset/test --check-ids --json /vol/diag/stage2/check_submission_stage2.json || echo VALIDATION_RETURNED_NONZERO

@@ -1,0 +1,6 @@
+python infra/slices_from_norm.py geo --work work --country India --state telangana --name IN_TG --extra-states "andhra pradesh"
+python infra/slices_from_norm.py geo --work work --country India --state telangana --name IN_TGA --extra-states "andhra pradesh"
+python .claude/skills/er-blocking-candidates/measure_blocking.py --slice IN_TG --bench-dir work/dev/IN_TG --out-dir work/dev/IN_TG --threads 16 --cap 80
+python .claude/skills/er-blocking-candidates/measure_blocking.py --slice IN_TGA --bench-dir work/dev/IN_TGA --out-dir work/dev/IN_TGA --threads 16 --cap 80 --city-alt
+python infra/slice_eval.py oof --dev work/dev --name IN_TG --cap 60
+python infra/slice_eval.py oof --dev work/dev --name IN_TGA --cap 60

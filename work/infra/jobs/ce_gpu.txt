@@ -1,0 +1,4 @@
+nvidia-smi --query-gpu=name,memory.total --format=csv
+python infra/ce_train.py
+python infra/ce_score.py oof_India oof_US hb_India hb_US
+python infra/ce_score.py test_France test_India test_US

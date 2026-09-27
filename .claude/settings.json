@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "databases-on-aws@claude-plugins-official": true,
+    "migration-to-aws@claude-plugins-official": true,
+    "aws-data-analytics@claude-plugins-official": true,
+    "sagemaker-ai@claude-plugins-official": true,
+    "aws-agents-for-devsecops@claude-plugins-official": true,
+    "aws-transform@claude-plugins-official": true,
+    "aws-startup-advisor@claude-plugins-official": true,
+    "aws-amplify@claude-plugins-official": true,
+    "aws-core@claude-plugins-official": true
+  }
+}

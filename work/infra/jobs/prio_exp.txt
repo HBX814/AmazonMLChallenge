@@ -1,0 +1,1 @@
+python infra/prio_exp.py US_IL IN_KA IN_TGA

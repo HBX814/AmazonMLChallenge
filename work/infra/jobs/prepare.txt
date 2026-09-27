@@ -1,0 +1,5 @@
+﻿# full-data prepare: parquet cache + native-token dict (TRAIN links) + normalized frames per split/country
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir ../../work --out-dir ../../output --stage prepare --n-jobs 14
+python -c "import polars as pl, glob; [print(p, pl.scan_parquet(p).select(pl.len()).collect().item()) for p in sorted(glob.glob('work/norm/*.parquet'))]"
+python infra/slices_from_norm.py states --work work --country US
+python infra/slices_from_norm.py states --work work --country India

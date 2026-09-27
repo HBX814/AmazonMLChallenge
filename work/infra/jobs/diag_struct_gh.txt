@@ -1,0 +1,2 @@
+python infra/diag_struct_g.py
+python infra/diag_struct_h.py

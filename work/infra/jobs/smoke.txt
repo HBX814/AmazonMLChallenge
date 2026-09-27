@@ -1,0 +1,1 @@
+python .claude/skills/er-challenge-playbook/smoke_test.py --n-jobs 4 --tmp /tmp/smoke --data-dir /tmp/mini

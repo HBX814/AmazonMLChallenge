@@ -1,0 +1,6 @@
+python infra/add_amb.py /vol/work_v2 /vol/work_v3
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v3 --out-dir /vol/output_v3 --n-jobs 14 --config configs/ab_base.json --stage train
+mv /vol/work_v3/model /vol/work_v3/model_A
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v3 --out-dir /vol/output_v3 --n-jobs 14 --config configs/ab_amb.json --stage train
+mv /vol/work_v3/model /vol/work_v3/model_B
+python -c "import json; [print(m, json.load(open(f'/vol/work_v3/{m}/decision.json'))['best'], json.load(open(f'/vol/work_v3/{m}/decision.json'))['breakdown'][:600]) for m in ('model_A','model_B')]"

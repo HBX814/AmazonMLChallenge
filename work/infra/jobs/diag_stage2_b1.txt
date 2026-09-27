@@ -1,0 +1,1 @@
+python infra/diag_stage2_b_train.py stage1 full --final --grid full

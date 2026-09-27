@@ -1,0 +1,1 @@
+python infra/ce_score.py oof_India oof_US hb_India hb_US --shard 1 --nshards 2

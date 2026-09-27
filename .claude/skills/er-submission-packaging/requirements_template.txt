@@ -1,0 +1,18 @@
+# requirements.txt for code/business_entity_resolution — hand-written, NOT pip freeze.
+# Keep only packages that src/ actually imports; versions = those installed in the project venv (Python 3.10, win_amd64 wheels exist).
+# Delete a line if src/ does not import it (package_submission.py warns about unused pins).
+polars==1.44.2
+pyarrow==25.0.1
+numpy==2.2.6
+scipy==1.15.3
+scikit-learn==1.7.2
+rapidfuzz==3.14.5
+lightgbm==4.7.0
+sparse-dot-topn==1.2.0
+psutil==7.2.2
+# optional — only if imported by src/:
+# anyascii==0.3.3        (ISC; normalize.py has its own stdlib transliterator)
+# duckdb==1.5.5          (MIT; out-of-core joins)
+# joblib==1.6.0          (BSD-3)
+# model2vec==0.9.0       (MIT; + an MIT/Apache model listed in models_manifest.json)
+# NEVER: unidecode, text-unidecode, aksharamukha, python-Levenshtein, groq, openai, anthropic, postal

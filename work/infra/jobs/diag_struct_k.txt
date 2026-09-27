@@ -1,0 +1,1 @@
+python infra/diag_struct_k.py

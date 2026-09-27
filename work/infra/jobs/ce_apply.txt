@@ -1,0 +1,3 @@
+python infra/ce_apply.py
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids --matching /vol/output_ce_density/matching_results.tsv || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids --matching /vol/output_ce_hsr_rule/matching_results.tsv || echo VALIDATION_RETURNED_NONZERO

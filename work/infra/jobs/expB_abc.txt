@@ -1,0 +1,3 @@
+python infra/expB_a_stage2.py
+python infra/expB_b_test_s2.py
+python infra/expB_c_adapt_train.py

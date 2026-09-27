@@ -1,0 +1,3 @@
+python infra/diag_stage2_i_guard.py
+python infra/diag_stage2_g_write.py s2g1
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /vol/diag/stage2/matching_results_s2g1.tsv --candidate /vol/output_v3/candidate_pairs.tsv --test-dir /root/proj/student_resource/dataset/test --check-ids || echo VALIDATION_RETURNED_NONZERO

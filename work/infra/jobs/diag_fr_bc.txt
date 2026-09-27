@@ -1,0 +1,1 @@
+python infra/diag_fr_b.py ; python infra/diag_fr_c.py

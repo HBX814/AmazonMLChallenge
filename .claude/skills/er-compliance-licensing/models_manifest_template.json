@@ -1,0 +1,68 @@
+{
+  "_how_to_use": "Copy to code/business_entity_resolution/models_manifest.json (it ships in the zip) and fill it. audit_compliance.py validates it; keys starting with '_' are ignored. Every model the pipeline loads needs an entry in 'models': the final LightGBM matcher and any pretrained encoder. 'params' must be the EXACT integer count (HF safetensors.total, or `python .claude/skills/er-compliance-licensing/audit_compliance.py --count-params <files>`); the cap is 8,000,000,000 inclusive. 'license' must be MIT or Apache-2.0. 'files' / 'local_path' are resolved relative to the code tree; when they exist the audit re-counts the params and fails on any mismatch.",
+  "team": "Master Bolt",
+  "final_model": "master-bolt/lightgbm-matcher",
+  "models": [
+    {
+      "id": "master-bolt/lightgbm-matcher",
+      "kind": "gbdt",
+      "role": "final pairwise matcher (the submitted model): p(same business) for each (s1, cand) pair",
+      "license": "MIT",
+      "license_evidence": "LightGBM library is MIT (github.com/microsoft/LightGBM LICENSE, verified 2026-09-25); the trees are trained by the team on student_resource/dataset/train only",
+      "params": null,
+      "params_method": "exact: split thresholds + leaf values summed over every tree of every fold booster used at inference; fill in with --count-params on the files below",
+      "files": ["../../work/models/final/*.txt"],
+      "library": "lightgbm==4.7.0",
+      "source": "trained locally by src/run_pipeline.py --stage train (GroupKFold by S1)",
+      "trust_remote_code": false
+    }
+  ],
+  "_optional_model_entries": [
+    {
+      "id": "intfloat/multilingual-e5-small",
+      "kind": "hf-encoder",
+      "role": "optional feature: cosine of Latin S1 name vs native-script S2/S3 name (zero-shot AUC 0.967 on 600+600 pairs)",
+      "license": "MIT",
+      "license_evidence": "HF Hub API tag license:mit, 2026-09-25",
+      "params": 117654272,
+      "params_method": "HF safetensors.total",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "local_path": "../../work/hf/multilingual-e5-small",
+      "usage_note": "prefix inputs with 'query: '; ~81 names/s on the laptop CPU, so encode only native-script India names and their S1 counterparts",
+      "trust_remote_code": false
+    },
+    {
+      "id": "minishlab/potion-multilingual-128M",
+      "kind": "static-embedding",
+      "role": "optional blocking / feature embedding (model2vec static, 101 languages; zero-shot cross-script AUC 0.939)",
+      "license": "MIT",
+      "license_evidence": "HF Hub API tag license:mit, 2026-09-25",
+      "params": 128090368,
+      "params_method": "HF safetensors.total",
+      "revision": "73908c3438cf03b6a01bcb9611d62b23d0726f08",
+      "local_path": "../../work/hf/potion-multilingual-128M",
+      "usage_note": "~1,958 'name | address' strings/s on the laptop CPU (10M strings ~1.4 h). model2vec 0.9.0 from_pretrained has no revision= and defaults to force_download=True: snapshot once with the pinned revision, then load from local_path",
+      "trust_remote_code": false
+    },
+    {
+      "id": "minishlab/potion-base-8M",
+      "kind": "static-embedding",
+      "role": "optional English-vocabulary static embedding (fastest: ~2,786 full strings/s, 10M ~1.0 h)",
+      "license": "MIT",
+      "license_evidence": "HF Hub API tag license:mit, 2026-09-25",
+      "params": 7559168,
+      "params_method": "HF safetensors.total",
+      "revision": "bf8b056651a2c21b8d2565580b8569da283cab23",
+      "local_path": "../../work/hf/potion-base-8M",
+      "trust_remote_code": false
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "src/ber/native_token_dict.tsv",
+      "origin": "learned-from-provided-train",
+      "how": "normalize.learn_native_dict over TRAIN S1 <-> S2/S3 links only (never test)",
+      "_note": "allowed origins: hand-written | learned-from-provided-train | generated-by-code. Delete this entry if the dict is rebuilt into work/ at run time instead of shipped."
+    }
+  ]
+}

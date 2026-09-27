@@ -1,0 +1,10 @@
+python -c "import glob, pyarrow.parquet as pq; [print(p, pq.ParquetFile(p).metadata.num_rows) for p in sorted(glob.glob('work/feats/*.parquet') + glob.glob('work/cands/*.parquet'))]"
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir ../../work --out-dir ../../output --config configs/submission_v1.json --n-jobs 14 --stage train
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir ../../work --out-dir ../../output --config configs/submission_v1.json --n-jobs 14 --stage predict
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir ../../work --out-dir ../../output --config configs/submission_v1.json --n-jobs 14 --stage write
+python code/business_entity_resolution/tools/check_submission.py --matching output/matching_results.tsv --candidate output/candidate_pairs.tsv --test-dir student_resource/dataset/test --check-ids --json work/logs/check_submission_v1.json || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /root/proj/output/matching_results.tsv --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /root/proj/output/matching_results.tsv --candidate /root/proj/output/candidate_pairs.tsv --test-dir /root/proj/student_resource/dataset/test || echo VALIDATION_RETURNED_NONZERO
+ls -la output
+python infra/full_reports.py oof
+python infra/full_reports.py shift

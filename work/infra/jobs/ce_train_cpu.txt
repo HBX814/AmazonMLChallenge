@@ -1,0 +1,1 @@
+python infra/ce_train.py --layers 6 --epochs 1.5 --bs 128 --lr 5e-5

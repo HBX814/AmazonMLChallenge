@@ -1,0 +1,8 @@
+cp -r /vol/work_v3/model_B /vol/work_v3/model && ls /vol/work_v3/model
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v3 --out-dir /vol/output_v3 --config configs/submission_v3.json --n-jobs 14 --stage predict
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v3 --out-dir /vol/output_v3 --config configs/submission_v3.json --n-jobs 14 --stage write
+python code/business_entity_resolution/tools/check_submission.py --matching /vol/output_v3/matching_results.tsv --candidate /vol/output_v3/candidate_pairs.tsv --test-dir student_resource/dataset/test --check-ids --json /vol/work_v3/check_submission_v3.json || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /vol/output_v3/matching_results.tsv --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /vol/output_v3/matching_results.tsv --candidate /vol/output_v3/candidate_pairs.tsv --test-dir /root/proj/student_resource/dataset/test || echo VALIDATION_RETURNED_NONZERO
+BER_WORK=/vol/work_v3 python infra/full_reports.py oof
+BER_WORK=/vol/work_v3 python infra/full_reports.py shift

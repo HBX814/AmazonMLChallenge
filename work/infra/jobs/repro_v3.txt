@@ -1,0 +1,6 @@
+python .claude/skills/er-challenge-playbook/smoke_test.py --n-jobs 4 --tmp /tmp/smoke --data-dir /tmp/mini --config code/business_entity_resolution/configs/submission_v3.json
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir /tmp/mini --work-dir /tmp/pkgwork --out-dir /tmp/pkgout --config configs/submission_v3.json --stage all --n-jobs 4
+cmp /tmp/pkgout/matching_results.tsv /tmp/smoke/output/matching_results.tsv && echo DETERMINISM_MATCHING_IDENTICAL
+cmp /tmp/pkgout/candidate_pairs.tsv /tmp/smoke/output/candidate_pairs.tsv && echo DETERMINISM_CANDIDATES_IDENTICAL
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --matching /tmp/pkgout/matching_results.tsv --candidate /tmp/pkgout/candidate_pairs.tsv --test-dir /tmp/mini/test --check-ids
+pip list 2>/dev/null | grep -iE "^(polars|pyarrow|numpy|scipy|scikit-learn|rapidfuzz|lightgbm|sparse-dot-topn|psutil) "

@@ -1,0 +1,4 @@
+python infra/slice_eval.py links --dev work/dev --name US_IL --cap 60
+python .claude/skills/er-error-analysis/error_report.py report --scored work/dev/US_IL/US_IL_oof_cap60.parquet --links work/dev/US_IL/US_IL_links_best_cap60.parquet --gt work/dev/US_IL/US_IL_links.parquet --s1 work/dev/US_IL/US_IL_s1_norm.parquet --pool work/dev/US_IL/US_IL_pool_norm.parquet --title 'US_IL cap60 OOF' --examples 6 --out work/reports/err_US_IL_cap60.md
+python infra/slice_eval.py links --dev work/dev --name IN_KA --cap 60
+python .claude/skills/er-error-analysis/error_report.py report --scored work/dev/IN_KA/IN_KA_oof_cap60.parquet --links work/dev/IN_KA/IN_KA_links_best_cap60.parquet --gt work/dev/IN_KA/IN_KA_links.parquet --s1 work/dev/IN_KA/IN_KA_s1_norm.parquet --pool work/dev/IN_KA/IN_KA_pool_norm.parquet --title 'IN_KA cap60 OOF' --examples 6 --out work/reports/err_IN_KA_cap60.md

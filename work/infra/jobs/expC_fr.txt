@@ -1,0 +1,5 @@
+python -c "import polars as pl; [print(p, pl.scan_parquet(p).select(pl.len()).collect().item()) for p in ['/vol/work_v2/cands/test_France.parquet','/vol/work_v3/pred/test_France_scored.parquet','/vol/work_v2/cands/train_US.parquet','/vol/work_v3/feats/train_US.parquet','/vol/work_v2/cands/train_India.parquet','/vol/work_v3/feats/train_India.parquet']]"
+python infra/expC_block.py --split test --country France --variant new
+python infra/expC_eval.py --split test --country France --base /vol/work_v3/pred/test_France_scored.parquet --new /vol/exp/expC/cands/test_France_new.parquet --tag new
+python infra/expC_block.py --split test --country France --variant base
+python infra/expC_eval.py --split test --country France --base /vol/work_v3/pred/test_France_scored.parquet --new /vol/exp/expC/cands/test_France_base.parquet --tag base

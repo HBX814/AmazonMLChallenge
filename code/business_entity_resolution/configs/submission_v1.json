@@ -1,0 +1,5 @@
+{
+ "train_s1_frac": 0.3,
+ "blocking": {"max_cands_per_s1": 60, "n_threads": 16},
+ "features": {"chunk_pairs": 2000000}
+}

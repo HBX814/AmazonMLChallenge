@@ -1,0 +1,2 @@
+python infra/expC_block.py --split train --country US --variant new
+python infra/expC_eval.py --split train --country US --base /vol/work_v3/feats/train_US.parquet --new /vol/exp/expC/cands/train_US_new.parquet --tag new

@@ -1,0 +1,1 @@
+python infra/diag_stage2_c_decide.py

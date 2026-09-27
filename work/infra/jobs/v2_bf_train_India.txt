@@ -1,0 +1,2 @@
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v2 --out-dir /vol/output_v2 --config configs/submission_v2.json --n-jobs 14 --stage block --splits train --countries India
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v2 --out-dir /vol/output_v2 --config configs/submission_v2.json --n-jobs 14 --stage features --splits train --countries India

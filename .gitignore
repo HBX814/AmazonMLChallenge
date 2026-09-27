@@ -1,0 +1,42 @@
+# Environment
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.stackdump
+
+# Official organiser files (large, not ours to redistribute)
+student_resource/
+__MACOSX/
+
+# Generated outputs, predictions and the submission zip (GBs)
+output/
+output_probes/
+submission/
+*.zip
+
+# Work area: caches, features, models, logs, raw-data reports.
+# Keep only the experiment log, compliance report and infra scripts.
+work/*
+!work/experiments.md
+!work/compliance_report.md
+!work/infra/
+work/infra/__pycache__/
+
+# Data / model binaries anywhere
+*.parquet
+*.tsv
+!.claude/skills/er-text-normalization/native_token_dict.example.tsv
+*.npy
+*.npz
+*.pkl
+*.joblib
+*.lgb
+*.bin
+*.pt
+*.safetensors
+
+# Local Claude Code settings / secrets
+.claude/settings.local.json
+.env
+*.pem

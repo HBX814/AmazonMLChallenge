@@ -1,0 +1,4 @@
+python infra/slices_from_norm.py geo --work work --country India --state "karnataka" --name IN_KA
+python .claude/skills/er-blocking-candidates/measure_blocking.py --slice IN_KA --bench-dir work/dev/IN_KA --out-dir work/dev/IN_KA --native-dict work/native_token_dict.tsv --n-jobs 14 --threads 16 --cap 80
+python infra/slice_eval.py oof --dev work/dev --name IN_KA --cap 30
+python infra/slice_eval.py oof --dev work/dev --name IN_KA --cap 60

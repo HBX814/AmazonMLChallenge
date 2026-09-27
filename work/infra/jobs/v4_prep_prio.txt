@@ -1,0 +1,3 @@
+mkdir -p /vol/work_v4 && ls /vol
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v4 --out-dir /vol/output_v4 --config configs/submission_v4.json --n-jobs 14 --stage prepare
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v4 --out-dir /vol/output_v4 --config configs/submission_v4.json --n-jobs 14 --stage prio

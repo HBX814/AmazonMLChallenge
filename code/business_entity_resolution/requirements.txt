@@ -1,0 +1,11 @@
+# Master Bolt business entity resolution -- runtime dependencies of src/ (hand-written from its imports, not pip freeze).
+# Python 3.10. All licenses permissive (MIT / BSD / Apache-2.0).
+polars==1.44.2
+pyarrow==25.0.1
+numpy==2.2.6
+scipy==1.15.3
+scikit-learn==1.7.2
+rapidfuzz==3.14.5
+lightgbm==4.7.0
+sparse-dot-topn==1.2.0
+psutil==7.2.2

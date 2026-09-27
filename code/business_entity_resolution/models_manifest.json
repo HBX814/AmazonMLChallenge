@@ -1,0 +1,39 @@
+{
+  "team": "Master Bolt",
+  "final_model": "master-bolt/lightgbm-matcher",
+  "models": [
+    {
+      "id": "master-bolt/lightgbm-matcher",
+      "kind": "gbdt",
+      "role": "final pairwise matcher (the submitted model): calibrated p(same business) for each (s1, cand) pair",
+      "license": "MIT",
+      "license_evidence": "LightGBM library is MIT (github.com/microsoft/LightGBM LICENSE, verified 2026-09-25); the trees are trained by the team on student_resource/dataset/train only",
+      "params": 208978,
+      "params_method": "exact: split thresholds + leaf values over every tree of the final booster (audit_compliance.py --count-params), 826 trees",
+      "files": ["../../work/models_v3/model_final_0.txt"],
+      "library": "lightgbm==4.7.0",
+      "source": "trained by src/run_pipeline.py --stage train --config configs/submission_v3.json (5-fold GroupKFold by S1 for OOF + calibration; final booster on all sampled train S1)",
+      "trust_remote_code": false
+    },
+    {
+      "id": "master-bolt/lightgbm-candidate-priority",
+      "kind": "gbdt",
+      "role": "blocking helper: ranks each S1's candidate union before the 60-per-S1 cap (inputs = blocking pass flags / scores / ranks only)",
+      "license": "MIT",
+      "license_evidence": "LightGBM library is MIT; trees trained by the team on TRAIN labels only (S1 of the matcher's training sample excluded)",
+      "params": 37500,
+      "params_method": "exact: audit_compliance.py --count-params, 300 trees",
+      "files": ["../../work/models_v3/prio_model.txt"],
+      "library": "lightgbm==4.7.0",
+      "source": "trained by src/run_pipeline.py --stage prio --config configs/submission_v3.json",
+      "trust_remote_code": false
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "<WORK_DIR>/native_token_dict.tsv",
+      "origin": "learned-from-provided-train",
+      "how": "normalize_frame.learn_dict_from_train over TRAIN S1 <-> S2/S3 links only (never test); rebuilt at run time by --stage prepare, not shipped"
+    }
+  ]
+}

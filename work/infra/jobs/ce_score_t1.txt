@@ -1,0 +1,1 @@
+python infra/ce_score.py test_France test_India test_US --shard 1 --nshards 5

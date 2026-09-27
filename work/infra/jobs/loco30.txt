@@ -1,0 +1,2 @@
+python infra/slice_eval.py loco --dev work/dev --train US_IL --eval IN_KA --cap 30
+python infra/slice_eval.py loco --dev work/dev --train IN_KA --eval US_IL --cap 30

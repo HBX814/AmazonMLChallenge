@@ -1,0 +1,2 @@
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir ../../work --out-dir ../../output --config configs/submission_v1.json --n-jobs 14 --stage block --splits test --countries France
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir ../../work --out-dir ../../output --config configs/submission_v1.json --n-jobs 14 --stage features --splits test --countries France
