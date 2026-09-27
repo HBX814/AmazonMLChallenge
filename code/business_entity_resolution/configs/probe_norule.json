@@ -1,0 +1,88 @@
+{
+ "train_s1_frac": 0.15,
+ "prio_exclude_frac": 0.3,
+ "learned_prio": true,
+ "prio_block_frac": 0.2,
+ "blocking": {
+  "max_cands_per_s1": 60,
+  "n_threads": 16,
+  "city_alt_blocks": true
+ },
+ "features": {
+  "chunk_pairs": 2000000
+ },
+ "model": {
+  "params": {
+   "objective": "binary",
+   "learning_rate": 0.1,
+   "num_leaves": 127,
+   "min_data_in_leaf": 100,
+   "feature_fraction": 0.8,
+   "bagging_fraction": 0.8,
+   "bagging_freq": 1,
+   "lambda_l2": 1.0,
+   "max_bin": 255,
+   "verbose": -1,
+   "num_threads": 0,
+   "seed": 0,
+   "deterministic": true,
+   "force_row_wise": true
+  }
+ },
+ "stage2": {
+  "enabled": true,
+  "guard": "G1"
+ },
+ "adapt": {
+  "method": "density_hs",
+  "rule": false
+ },
+ "crossenc": {
+  "enabled": true,
+  "band": [
+   0.01,
+   0.99
+  ],
+  "models": [
+   {
+    "name": "ce",
+    "model": "intfloat/multilingual-e5-small",
+    "layers": 6,
+    "train_buckets": [
+     300,
+     450
+    ],
+    "epochs": 1.5,
+    "bs": 128,
+    "lr": 5e-05,
+    "max_len": 128,
+    "warmup": 0.05,
+    "freeze_embeddings": false,
+    "aug_frac": 0.0,
+    "val_mod": 20,
+    "seed": 0,
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+   },
+   {
+    "name": "ce2",
+    "model": "BAAI/bge-reranker-v2-m3",
+    "layers": 0,
+    "train_buckets": [
+     300,
+     1000
+    ],
+    "epochs": 1.0,
+    "bs": 64,
+    "lr": 2e-05,
+    "max_len": 128,
+    "warmup": 0.06,
+    "freeze_embeddings": true,
+    "aug_frac": 0.25,
+    "val_mod": 40,
+    "seed": 0,
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+   }
+  ]
+ },
+ "candidate_prune_p1": 0.001
+}

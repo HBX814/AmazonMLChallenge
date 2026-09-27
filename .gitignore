@@ -40,3 +40,13 @@ work/infra/__pycache__/
 .claude/settings.local.json
 .env
 *.pem
+
+# API credentials (never commit)
+kaggle.json
+**/kaggle.json
+
+# Kaggle GPU training scripts are kept; their downloaded outputs / data are not
+!work/plan_v5.md
+!work/kaggle/
+work/kaggle/out_*/
+work/kaggle/*_data/

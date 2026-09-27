@@ -23,6 +23,9 @@ image = (
                  "rapidfuzz==3.14.5", "lightgbm==4.7.0", "psutil==7.2.2", "sparse-dot-topn==1.2.0")
     .add_local_dir(os.path.join(PROJECT, "code", "business_entity_resolution"),
                    f"{REMOTE}/code/business_entity_resolution", ignore=["**/__pycache__/**"])
+    .add_local_dir(os.path.join(PROJECT, ".claude", "skills"), f"{REMOTE}/.claude/skills", ignore=["**/__pycache__/**"])
+    .add_local_file(os.path.join(PROJECT, "student_resource", "utils", "validate_submission.py"),
+                    f"{REMOTE}/student_resource/utils/validate_submission.py")
     .add_local_dir(HERE, f"{REMOTE}/infra", ignore=["**/__pycache__/**", "jobs/**"])
 )
 vol = modal.Volume.from_name("mbolt-data")

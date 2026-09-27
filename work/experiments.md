@@ -194,3 +194,121 @@ Rules: one change per entry · same frozen folds (5-fold, seed 0) · numbers are
   | output_probes/ce_hsr_rule/ | density_hs + rule (dropped FR 2,192 / IN 4,340 / US 10,716) | 3.402 / 3.338 / 3.367 | 5,819,384 | 69,650 / 136,814 | (pending) |
   Both pass the official validator (--candidate NONE --check-ids); 1,732,544 rows each. Modal spend to here ~$17 of $30.
   If kept: the final package must include the CE training/scoring code + model (MIT, 107.0M params) in the pipeline.
+### #16 cross-encoder v2 / v3 on Kaggle GPUs (2026-09-27, in progress)
+- LB: output_probes/ce_hsr_rule = **0.981499** (from 0.972409; +0.0091 LB for +0.0018 OOF -> the CE mainly fixes test-shift errors).
+- Stage-2 tweaks on CE v1 (ce_s2_tune.py): ce8 (+ce_minus_logit, ce_sig_sum/other, ce_npos) OOF 0.98761 / HB 0.98751; ce8 lr 0.05 +
+  255 leaves 0.98764 / 0.98753 vs ce4 0.98752 / 0.98755 -> noise, not kept.
+- Data (ce_data_v2.py): kg_train = train S1 buckets 300-999, band [0.01, 0.99]: 1,157,486 pairs (347,894 pos; India 409k, US 748k);
+  kg_eval = band rows of OOF (246,751) / HB (249,967) / test (FR 341,561, IN 686,547, US 718,233) = 2,243,059. Private Kaggle
+  dataset harsh0814/mbolt-ce-v2-data (163 MB).
+- Kernels (T4 x2, fp16, DataParallel, 1 epoch, bs 64, lr 2e-5, warmup 6%, word embeddings frozen, 25% synthetic shifted-house-number
+  negatives, crc32 1/40 S1 validation): mbolt-ce-v2 = BAAI/bge-reranker-v2-m3 (Apache-2.0), mbolt-ce-v3 = intfloat/multilingual-e5-large
+  (MIT, seed 1). Measured 78 pairs/s training (18,144 steps; loss 0.20-0.33 at 45%) -> ~4.1 h training + ~2 h scoring each.
+- Pipeline: ber/crossenc.py + stage `crossenc` + config.crossenc; smoke test (mini set, 1-layer e5-small) PASS incl. validators.
+- **CE v2 (bge-reranker-v2-m3) done 16:48 IST** (18,867 s = 5.2 h incl. 2.24M-pair scoring): 567.8M params, 1,128,291 train pairs +
+  32,913 synthetic negatives; held-out band pairs **AUC 0.9661 / logloss 0.2059 vs stage-1 0.9444 / 0.2593** (CE v1 was 0.916);
+  true pair > shifted-number twin 99.20%. **CE v3 (e5-large) done 17:00**: 559.9M, AUC 0.9649 / 0.2122, twin 99.29%.
+- **Stage 2 (ce_s2_v2.py, same frames/folds/decision):** v1 OOF 0.98752 / HB 0.98755 · **v2 0.98869 / 0.98860** (India 0.98861 /
+  0.98844, US 0.98874 / 0.98871) · **v1v2 0.98870 / 0.98864** (best; eb 1.0) -> +0.0012 OOF / +0.0011 HB over the LB-0.981499 model.
+- Test (ce_apply_v2.py --tag ce2, v1v2, eb 1.0, adapt priors refit on its OOF): ce2_density links/S1 FR 3.380 / IN 3.346 / US 3.382;
+  **ce2_hsr_rule FR 3.373 / IN 3.341 / US 3.365** (rule dropped 1,603 / 3,386 / 9,292); both official-validator PASS; ce2_hsr_rule
+  differs from the 0.981499 file on 42,550 S1. Files: output_probes/ce2_hsr_rule, output_probes/ce2_density.
+- **LB: ce2_hsr_rule = 0.98314** (+0.0016 over 0.981499; OOF +0.0012 -> 1.4x transfer). 3-CE ensemble v1v2v3 OOF 0.98874 /
+  HB 0.98865 (+0.00004 / +0.00001 -> dropped). CE v2 epoch 2 (kernel mbolt-ce-v2b, lr 1e-5, from the epoch-1 weights) running.
+- **Final pipeline run** (/vol/work_v5 = v4 stages linked + CE scores/reports, run_pipeline --stage crossenc/predict/write,
+  configs/submission_v5.json): stage-2 OOF 0.98870098 (identical); output_v5/matching_results.tsv **byte-identical** to
+  ce2_hsr_rule; check_submission (strict, with candidates) PASS; official validator PASS.
+- OOF loss breakdown (ce_err.py, v1v2): F 0.98870; oracle on candidates 0.99540 (17,387 true links not candidates); FN in
+  candidates 20,506 (fix all -> 0.99430), FP 1,257 (fix all -> 0.98980); 95% of the fixable loss is FN with stage-1 p in
+  [0.01, 0.99]; wider CE band worth <= +0.0005. Empty-address FN 12,531 of 20,506 (fix all -> 0.99202); empty list despite
+  a true candidate 0.0012 (406 S1; was ~0.0021); singleton FP 0.00034.
+- Simulated test shift on HB (sim_v5.py; OOF copy-like HARD negatives, p1-tilted): no shift none/density 0.98864, hsr_rule
+  0.98830; measured (US 1.84x, IN 1.12x) none 0.98815, density 0.98821, hsr_rule 0.98797; strong 2.5x none 0.98612, density
+  0.98706, hsr_rule 0.98716 (max_factor 8 = 4; rule p<0.999 worse everywhere). -> knobs worth <= +-0.0002; rule kept (LB-proven).
+- France label-free (fr_diag_v5.py): links/S1 FR 3.373 / IN 3.341 / US 3.365, empty FR 5.5% / 5.8% / 5.8%; unique-exact-name
+  orphans FR 0.025 / IN 0.009 / US 0.013 per S1, but adding such links costs -0.001 on OOF (true rate 0.33) -> no rule.
+  Same-name+city clusters (cluster_eval.py; FR 29.8%, IN 23-24%, US 1-2%): OOF IN 0.9820 vs 0.9907 rest, US 0.9795 vs
+  0.9890 (stage 1: 0.9761 / 0.9752) -> explains only ~0.003 for France. OOF links/S1 IN 3.346 / US 3.359 = test -> US/India
+  test ~ OOF; LB 0.98314 then implies **France ~0.954** = the whole remaining gap (no labels -> no safe fix before the deadline).
+### #17 research diagnostics on the v5 model (2026-09-27 ~19:10-19:45 IST, parallel session; no model change)
+- Loss map of v1v2 OOF (diag_research.py; categories = candidate address empty (E) or not (N) x its name_core vs the S1's /
+  #S1 sharing it); gain = macro F0.5 if that category's misses were all fixed (upper bound):
+  | category | model FN | gain | blocking misses | gain |
+  |---|---|---|---|---|
+  | E1 empty, core = S1 core, unique | 147 (18,552 of 18,560 true selected) | +0.00004 | 2 | 0 |
+  | E2 empty, core = S1 core, >= 2 S1 share it | 9,550 (p<0.2 2,295 / 0.2-0.5 4,724 / >=0.5 2,531) | **+0.00254** | 3,476 | +0.00096 |
+  | E3 empty, core matches no S1 (typo/alias/domain) | 2,363 | +0.00063 | **7,376** | **+0.00199** |
+  | E4 empty, core = another S1's only | 471 | +0.00013 | 693 | +0.00020 |
+  | N1 addr, core = S1 core, unique | 1,389 | +0.00043 | 0 | - |
+  | N2 addr, core = S1 core, >= 2 S1 | 2,060 | +0.00067 | 579 | +0.00023 |
+  | N3 addr, core matches no S1 | 4,275 | +0.00120 | 4,640 (3,467 same city) | +0.00134 |
+  | N4 addr, core = another S1's only | 251 | +0.00007 | 621 | +0.00020 |
+  FP 1,257 (drop all +0.0011). -> the model-side remainder is mostly true 50/50 ambiguity (E2); blocking remainder = no-address
+  records with a noised name (E3) and noised names at the right address (N3).
+- Backward exact-core pass for empty-address records (<= 3 S1 share the core): only 1,570 new pairs over all train S1, 6 true
+  on OOF -> F +0.000001 (rule version -0.00003). Dead end: exact-name pairs are already candidates.
+- Never-a-candidate pool records per S1 (label-free): train India 0.0307 (78% linked; empty ones 98% linked), train US 0.0084
+  (96%); test France 0.0386, India 0.0426, US 0.0061 -> France coverage is India-like, not worse.
+- Empty-address pool records (diag_empty_rates.py): per S1 FR 0.166 / IN 0.138 / US 0.167 (train copies 0.137 / 0.163,
+  distractors only 0.003-0.004); selected FR 50.8% / IN 51.7% / US 57.5% vs train OOF recall 52.9% / 52.2%; unique full
+  name selected 91-96% everywhere. Only FR records whose core matches no S1 lag (selected 17% vs 29-39%, never-candidate 32%
+  vs 6-17%) = ~0.03/S1 -> <= +0.0001 LB. -> France is NOT under-linking empty-address records overall.
+- **Copy-budget stage-2 features** (s2_src.py; per-source counts of confident same-source links of the S1 and of its strongest
+  rival claimant + hazard P(n>=m+1|n>=m) from train GT buckets >= 300: S2 .87/.59/.42/.30/.17/0, S3 .88/.63/.45/.33/.21/.07/0):
+  v1v2 refit 0.98870 / 0.98864 (reproduced) -> v1v2_sb **0.98881 / 0.98865 (+0.00011 / +0.00001) -> noise, not kept**.
+- Inspection v5 (diag_fr_v5_inspect.py -> work/reports/diag/fr_v5/): France uncertain S1 show (a) empty-address exact-name
+  copies at p 0.1-0.55 (same pattern in the US sheet = the E2 ambiguity, not France-specific), (b) hard-negative families
+  (same name + street, other number; same address, other generic word Comite/Amicale/Ecole) with some selected at p 0.8-0.9,
+  (c) cap-cut blocking misses (S1-250860039: typo'd name at the exact address not a candidate).
+- Modal spend for these four jobs ~ $0.5 (workspace total $20.1 of $30 credit before them).
+### #18 final package (2026-09-27 19:40-19:55 IST; deadline = end of day today)
+- Submission = v5 (LB 0.98314): output/matching_results.tsv sha256 6448e77d...b40e (= output_probes/ce2_hsr_rule = /vol/output_v5),
+  output/candidate_pairs.tsv sha256 4deed931...7680 (102,281,392 pairs).
+- src/ber/crossenc.py (18:37) and configs/submission_v5.json (18:32) were edited after the outputs -> reproduction with the
+  current code (jobs/repro_v5.txt: crossenc [stage-2 model reused], predict --force, write -> /vol/output_v5r): both files
+  byte-identical (same sha256; per-country links FR 875,090 / IN 2,706,468 / US 2,231,652, rule drops 1,603 / 3,386 / 9,292).
+  -> G5 --allow-stale justified.
+- requirements.txt: removed a URL from a comment (G2 forbids http(s):// anywhere).
+- package_submission.py (--check-ids, extras configs/submission_v5.json, models_manifest.json, tools/check_submission.py):
+  all gates PASS (G6 full check incl. ids), 24 files, 602,427,337 B -> **D:\MasterBolt\Master_Bolt_submission.zip**
+  (built on D: because C: had 0.7 GB free); zip CRC ok, zipped matching file sha256 = uploaded file.
+  submission/Master_Bolt_submission.zip on C: is the OLD v3 package (2026-09-26) -- do not upload it.
+### #19 learned candidate filter (2026-09-27 ~20:00 IST; organizers' email: candidate_pairs.tsv counts in the final ranking,
+smaller candidate sets per S1 rank higher)
+- cfg.candidate_prune_p1 = 0.001 (submission_v5.json): the stage-1 LightGBM is the LAST blocking filter; stage 2 / cross-encoders
+  / adaptation / decision run on pairs with stage-1 p >= 0.001 only, and exactly those are written to candidate_pairs.tsv.
+- prune_eval.py: test candidates per S1 FR 58.6 -> 5.80, IN 59.5 -> 4.75, US 58.7 -> 5.03 (102,281,392 -> 8,689,809 pairs = the
+  stage-2 re-scored rows); 0 current test links below 0.001. OOF: F 0.9887010 -> 0.9887017 (3 links change), true links kept
+  1,129,964 of 1,130,088, oracle 0.99540 -> 0.99536. tau 0.01 would give 4.0-4.5 per S1 but loses 979 true links (oracle
+  0.99509) and 4 test links -> 0.001 chosen.
+- Peer session amazonmlchallenge-43 (#17, #18) stood down while outputs/zip are rebuilt (package on D:\MasterBolt, C: is full).
+- **CORRECTION (user, 20:20 IST): the LB of ce2_hsr_rule (= v5 = output/) is 0.983714, not 0.98314** (+0.0022 over 0.981499 for
+  +0.0012 OOF -> 1.8x transfer); implied France ~0.958 (US/India ~0.988).
+- Final run (jobs/final_v6.txt: run_pipeline --stage predict --force + write on /vol/work_v5 -> /vol/output_v6): candidates
+  FR 15,199,052 -> 1,505,613, IN 48,180,878 -> 3,847,851, US 38,901,462 -> 3,336,345 (8,689,809 = 5.02 per S1; 25,145 S1 with an
+  empty candidate list, all predicted empty anyway); links FR 875,090 (=), IN 2,706,473 (+5), US 2,231,653 (+1) vs v5.
+  check_submission (strict, --check-ids) PASS; official validator WITH the candidate file PASS.
+  output/matching_results.tsv sha256 8ff2a93d...f8e (97,357,002 B; = output_probes/v6_pruned), output/candidate_pairs.tsv
+  sha256 db613c57...9e5 (134,358,306 B, was 1.34 GB).
+- Package rebuilt (all gates PASS, 24 files, 99,493,259 B, sha256 784d2403...527): D:\MasterBolt\Master_Bolt_submission.zip,
+  identical copy in submission/ (replaces the stale v3 zip). **The user must upload output/matching_results.tsv (v6) as the
+  final LB upload so the zipped file = the scored file** (expected ~0.98371; 6 of 5.8M links differ from the 0.983714 file).
+### #20 France probes on the leaderboard (2026-09-27 20:40-21:05 IST; organizers gave 2 extra uploads -> 3 left; deadline < 23:30)
+- Public rank 577 at 0.983714. Probes via the real pipeline (fresh pred dirs /vol/work_p*, symlinked stages, same candidates):
+  p1 no adaptation + no rule: links FR 877,622 (+2,532) / IN 2,710,780 (+4,307) / US 2,245,966 (+14,313) -> mixes a likely US loss
+  (adapt + rule were LB +0.0028 in the v3 era) -> not uploaded. p2 adaptation, no rule: FR 876,693 / IN 2,709,859 (US not used).
+- **p3 = cfg.adapt.seen_only** (new switch: adaptation + rule only for countries with their own source priors = seen in training;
+  France has none and used the pooled prior, a poor fit for its 1.9-digit house numbers): changes ONLY France (877,622 links,
+  2,173 S1 differ from v6); IN / US identical to v6. Official validator PASS. File output_probes/p3_seen_only (sha 99c8cf84...).
+  Decision rule fixed before the upload: LB > 0.983714 -> p3 becomes the final (configs + zip rebuilt); else v6 stays final.
+- CE v2 epoch 2 (kernel mbolt-ce-v2b) not used: its scores arrive ~22:50, too late for the deadline.
+- **LB p3 (seen_only) = 0.983705 vs 0.983714 -> -0.000009**: the adaptation + rule are ~neutral for France (not the cause of the
+  France gap; remaining France errors = wrong assignments in same-name / same-address clusters). Per the pre-fixed rule the
+  final stays v6. seen_only switch reverted from src (disk == zip verified by sha256 for code, configs, docs, outputs).
+- **Final**: user uploads output/matching_results.tsv (v6, sha 8ff2a93d...) as upload 2 and keeps upload 3 unused, so the last LB
+  upload = the zipped file. Zip: D:\MasterBolt\Master_Bolt_submission.zip (sha 16efcfed...), copy in submission/.
+- **CE v2 epoch 2 (mbolt-ce-v2b) done**: standalone val AUC 0.9681 / logloss 0.2010 (epoch 1: 0.9661 / 0.2059), twin 99.40%.
+  Stage 2 with ce + ce2(epoch 2) (ce_s2_v2.py --out s2_v2bf): **OOF 0.98875 / HB 0.98864** vs 0.98870 / 0.98864 -> within noise.
+  Test file via ce_apply_v2.py (not the pipeline, full candidates): output_probes/ce2b_epoch2_hsr_rule (links FR 872,356 /
+  IN 2,706,900 / US 2,231,437), official validator PASS, 23:41 IST. NOT in the zip; the user was advised to keep the zipped v6
+  file as the last LB upload.

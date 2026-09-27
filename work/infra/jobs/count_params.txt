@@ -1,0 +1,2 @@
+python .claude/skills/er-compliance-licensing/audit_compliance.py --count-params /vol/work_v4/model/model_final_0.txt /vol/work_v5/model/stage2/model_s2.txt /vol/work_v4/model/prio_model.txt /vol/exp/ce/model/model.safetensors
+head -c 600 /vol/work_v5/model/stage2/decision_s2.json

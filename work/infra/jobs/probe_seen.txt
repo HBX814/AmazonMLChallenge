@@ -1,0 +1,4 @@
+python infra/mk_workdir.py /vol/work_v5 /vol/work_p3
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_p3 --n-jobs 14 --out-dir /vol/output_p3 --config configs/probe_seen.json --stage predict --force
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_p3 --n-jobs 14 --out-dir /vol/output_p3 --config configs/probe_seen.json --stage write
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids --matching /vol/output_p3/matching_results.tsv || echo VALIDATION_RETURNED_NONZERO

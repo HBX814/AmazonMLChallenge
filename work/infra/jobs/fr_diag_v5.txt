@@ -1,0 +1,1 @@
+python infra/fr_diag_v5.py

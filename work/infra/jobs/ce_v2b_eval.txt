@@ -1,0 +1,1 @@
+python infra/ce_s2_v2.py --variants v1,v1v2 --ce2-file kg_scores_v2b.parquet --out s2_v2b

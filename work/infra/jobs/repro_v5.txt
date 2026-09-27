@@ -1,0 +1,7 @@
+# reproduction of the uploaded v5 outputs with the CURRENT code (crossenc.py / submission_v5.json edited after the run)
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v5 --n-jobs 14 --out-dir /vol/output_v5r --config configs/submission_v5.json --stage crossenc
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v5 --n-jobs 14 --out-dir /vol/output_v5r --config configs/submission_v5.json --stage predict --force
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v5 --n-jobs 14 --out-dir /vol/output_v5r --config configs/submission_v5.json --stage write
+sha256sum /vol/output_v5/matching_results.tsv /vol/output_v5r/matching_results.tsv /vol/output_v5/candidate_pairs.tsv /vol/output_v5r/candidate_pairs.tsv
+cmp /vol/output_v5/matching_results.tsv /vol/output_v5r/matching_results.tsv && echo MATCHING_IDENTICAL || echo MATCHING_DIFFERS
+cmp /vol/output_v5/candidate_pairs.tsv /vol/output_v5r/candidate_pairs.tsv && echo CANDIDATES_IDENTICAL || echo CANDIDATES_DIFFERS

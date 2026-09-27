@@ -1,18 +1,68 @@
 {
-  "team": "Master Bolt",
-  "final_model": "master-bolt/lightgbm-matcher",
+  "team": "Master_Bolt",
+  "final_model": "master-bolt/lightgbm-stage2",
+  "note": "The submitted matches come from a cascade: stage-1 LightGBM -> two fine-tuned transformer cross-encoders (features) -> stage-2 LightGBM (final probabilities) -> expected-F0.5 decision. Every component is MIT or Apache-2.0 and far below 8B parameters (largest: 567,755,777).",
   "models": [
+    {
+      "id": "master-bolt/lightgbm-stage2",
+      "kind": "gbdt",
+      "role": "final pairwise model: collective stage-2 re-scoring of every pair with stage-1 p >= 1e-3 (stage-1 features + within-S1 context + competition over all S1 + sibling similarities + cross-encoder logits); its calibrated p drives the decision",
+      "license": "MIT",
+      "license_evidence": "LightGBM library is MIT (github.com/microsoft/LightGBM LICENSE); trees trained by the team on the provided train data only",
+      "params": 30866,
+      "params_method": "exact: split thresholds + leaf values over every tree (audit_compliance.py --count-params)",
+      "files": [
+        "<WORK_DIR>/model/stage2/model_s2.txt"
+      ],
+      "library": "lightgbm==4.7.0",
+      "source": "trained by src/run_pipeline.py --stage crossenc --config configs/submission_v5.json (5 frozen GroupKFold-by-S1 folds for OOF + isotonic calibration; final booster on the OOF sample)",
+      "trust_remote_code": false
+    },
     {
       "id": "master-bolt/lightgbm-matcher",
       "kind": "gbdt",
-      "role": "final pairwise matcher (the submitted model): calibrated p(same business) for each (s1, cand) pair",
+      "role": "stage-1 pairwise matcher: calibrated p(same business) for every candidate pair (98 features)",
       "license": "MIT",
-      "license_evidence": "LightGBM library is MIT (github.com/microsoft/LightGBM LICENSE, verified 2026-09-25); the trees are trained by the team on student_resource/dataset/train only",
-      "params": 208978,
-      "params_method": "exact: split thresholds + leaf values over every tree of the final booster (audit_compliance.py --count-params), 826 trees",
-      "files": ["../../work/models_v3/model_final_0.txt"],
+      "license_evidence": "LightGBM library is MIT; trees trained by the team on the provided train data only",
+      "params": 153571,
+      "params_method": "exact: audit_compliance.py --count-params",
+      "files": [
+        "<WORK_DIR>/model/model_final_0.txt"
+      ],
       "library": "lightgbm==4.7.0",
-      "source": "trained by src/run_pipeline.py --stage train --config configs/submission_v3.json (5-fold GroupKFold by S1 for OOF + calibration; final booster on all sampled train S1)",
+      "source": "trained by src/run_pipeline.py --stage train --config configs/submission_v5.json (15% hash sample of train S1, 5-fold GroupKFold by S1, isotonic calibration)",
+      "trust_remote_code": false
+    },
+    {
+      "id": "master-bolt/cross-encoder-ce",
+      "kind": "transformer",
+      "role": "cross-encoder 'ce': logit for (S1 text, candidate text) pairs with stage-1 p in [0.01, 0.99]; stage-2 feature",
+      "base_model": "intfloat/multilingual-e5-small (first 6 of 12 transformer layers kept)",
+      "license": "MIT",
+      "license_evidence": "Hugging Face model card of intfloat/multilingual-e5-small: license mit (verified 2026-09-27); fine-tuned by the team on the provided train pairs only",
+      "params": 107007361,
+      "params_method": "exact: sum of safetensors tensor sizes (audit_compliance.py --count-params)",
+      "files": [
+        "<WORK_DIR>/crossenc/model_ce/model.safetensors"
+      ],
+      "library": "torch==2.5.1, transformers==4.46.3",
+      "source": "src/ber/crossenc.py train() via run_pipeline --stage crossenc (train S1 hash buckets 300-449, 236k band pairs, 1.5 epochs); submitted run trained on a 32-core CPU",
+      "trust_remote_code": false
+    },
+    {
+      "id": "master-bolt/cross-encoder-ce2",
+      "kind": "transformer",
+      "role": "cross-encoder 'ce2': logit for (S1 text, candidate text) pairs with stage-1 p in [0.01, 0.99]; stage-2 feature",
+      "base_model": "BAAI/bge-reranker-v2-m3 (XLM-RoBERTa-large reranker)",
+      "license": "Apache-2.0",
+      "license_evidence": "Hugging Face model card of BAAI/bge-reranker-v2-m3: license apache-2.0 (verified 2026-09-27); fine-tuned by the team on the provided train pairs only",
+      "params": 567755777,
+      "params_method": "exact: sum of model.parameters() at training time (crossenc_report.json)",
+      "files": [
+        "<WORK_DIR>/crossenc/model_ce2/"
+      ],
+      "library": "torch, transformers (Kaggle GPU image)",
+      "source": "src/ber/crossenc.py recipe (train S1 hash buckets 300-999, 1.13M band pairs + 32,913 synthetic shifted-house-number negatives, 1 epoch, frozen word embeddings); submitted run trained on Kaggle GPUs (2 x T4, fp16)",
       "trust_remote_code": false
     },
     {
@@ -20,12 +70,38 @@
       "kind": "gbdt",
       "role": "blocking helper: ranks each S1's candidate union before the 60-per-S1 cap (inputs = blocking pass flags / scores / ranks only)",
       "license": "MIT",
-      "license_evidence": "LightGBM library is MIT; trees trained by the team on TRAIN labels only (S1 of the matcher's training sample excluded)",
+      "license_evidence": "LightGBM library is MIT; trees trained by the team on TRAIN labels only (the models' training S1 excluded)",
       "params": 37500,
       "params_method": "exact: audit_compliance.py --count-params, 300 trees",
-      "files": ["../../work/models_v3/prio_model.txt"],
+      "files": [
+        "<WORK_DIR>/model/prio_model.txt"
+      ],
       "library": "lightgbm==4.7.0",
-      "source": "trained by src/run_pipeline.py --stage prio --config configs/submission_v3.json",
+      "source": "trained by src/run_pipeline.py --stage prio --config configs/submission_v5.json",
+      "trust_remote_code": false
+    },
+    {
+      "id": "intfloat/multilingual-e5-small",
+      "kind": "hf-encoder",
+      "role": "pretrained backbone of cross-encoder 'ce' (first 6 of 12 layers kept, then fine-tuned by the team)",
+      "license": "MIT",
+      "license_evidence": "Hugging Face model card / API: license mit (verified 2026-09-27)",
+      "params": 117654272,
+      "params_method": "exact: Hub safetensors metadata of the pinned revision",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "files": [],
+      "trust_remote_code": false
+    },
+    {
+      "id": "BAAI/bge-reranker-v2-m3",
+      "kind": "hf-cross-encoder",
+      "role": "pretrained backbone of cross-encoder 'ce2' (fine-tuned by the team)",
+      "license": "Apache-2.0",
+      "license_evidence": "Hugging Face model card / API: license apache-2.0 (verified 2026-09-27)",
+      "params": 567755777,
+      "params_method": "exact: Hub safetensors metadata of the pinned revision (= model.parameters())",
+      "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+      "files": [],
       "trust_remote_code": false
     }
   ],
@@ -34,6 +110,11 @@
       "path": "<WORK_DIR>/native_token_dict.tsv",
       "origin": "learned-from-provided-train",
       "how": "normalize_frame.learn_dict_from_train over TRAIN S1 <-> S2/S3 links only (never test); rebuilt at run time by --stage prepare, not shipped"
+    },
+    {
+      "path": "<WORK_DIR>/model/adapt_source.json",
+      "origin": "learned-from-provided-train",
+      "how": "adapt.fit_source: per country x house-number-relation class mean OOF probability (train only); the test side uses label-free pair densities"
     }
   ]
 }

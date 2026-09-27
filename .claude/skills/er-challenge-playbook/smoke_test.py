@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """smoke_test.py -- assemble the reference modules into a temp `ber` package and run the WHOLE pipeline on a
 mini dataset, then both validators. Run after any change to a reference module (and before copying them).
 
@@ -31,6 +31,7 @@ MODULES = {                      # module -> skill folder
     "blocking": "er-blocking-candidates", "features": "er-pair-features", "model": "er-matcher-training",
     "decide": "er-f05-decisions", "metric": "er-f05-decisions", "outputs": "er-submission-packaging",
     "config": "er-challenge-playbook", "stage2": "er-matcher-training", "adapt": "er-f05-decisions",
+    "crossenc": "er-matcher-training",
 }
 
 

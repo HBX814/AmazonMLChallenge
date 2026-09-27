@@ -50,6 +50,13 @@ class AdaptSettings:
 
 
 @dataclass
+class CrossEncSettings:
+    enabled: bool = False              # transformer cross-encoder logits as stage-2 features (ber/crossenc.py)
+    band: List[float] = field(default_factory=lambda: [0.01, 0.99])   # stage-1 p band that is scored
+    models: List[dict] = field(default_factory=list)   # crossenc.CrossEncModel fields per model (name, model, ...)
+
+
+@dataclass
 class PipelineConfig:
     seed: int = 0
     n_jobs: int = -1
@@ -62,6 +69,8 @@ class PipelineConfig:
     prio_exclude_frac: Optional[float] = None    # hash sample of S1 excluded from prio training (None = train_s1_frac)
     train_drop_s1_frac: float = 0.0              # train S1 removed before blocking (their copies become ownerless
                                                  # distractors) to match the higher test pool density; top hash buckets
+    candidate_prune_p1: Optional[float] = None   # last blocking filter: keep only pairs with stage-1 p >= this for
+                                                 # stage 2 / decision / candidate_pairs.tsv (None = keep all)
     shard_blocking: bool = False                 # True on the laptop: geo_shards() one block group at a time
     shard_max_pool_rows: int = 1_500_000
     blocking: BlockingConfig = field(default_factory=BlockingConfig)
@@ -70,6 +79,7 @@ class PipelineConfig:
     decision: DecisionConfig = field(default_factory=DecisionConfig)
     stage2: Stage2Settings = field(default_factory=Stage2Settings)
     adapt: AdaptSettings = field(default_factory=AdaptSettings)
+    crossenc: CrossEncSettings = field(default_factory=CrossEncSettings)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), indent=1, default=str)

@@ -1,0 +1,6 @@
+python infra/setup_v5.py
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v5 --n-jobs 14 --out-dir /vol/output_v5 --config configs/submission_v5.json --stage crossenc
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v5 --n-jobs 14 --out-dir /vol/output_v5 --config configs/submission_v5.json --stage predict
+cd code/business_entity_resolution && python src/run_pipeline.py --data-dir ../../student_resource/dataset --work-dir /vol/work_v5 --n-jobs 14 --out-dir /vol/output_v5 --config configs/submission_v5.json --stage write
+python code/business_entity_resolution/tools/check_submission.py --matching /vol/output_v5/matching_results.tsv --candidate /vol/output_v5/candidate_pairs.tsv --test-dir student_resource/dataset/test --check-ids --json /vol/work_v5/logs/check_submission_v5.json || echo VALIDATION_RETURNED_NONZERO
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids --matching /vol/output_v5/matching_results.tsv || echo VALIDATION_RETURNED_NONZERO

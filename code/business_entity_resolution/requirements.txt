@@ -9,3 +9,9 @@ rapidfuzz==3.14.5
 lightgbm==4.7.0
 sparse-dot-topn==1.2.0
 psutil==7.2.2
+# cross-encoder stage (ber/crossenc.py, --stage crossenc); a CUDA GPU is strongly recommended for the large models
+# (install the torch wheel matching your CUDA version from the PyTorch wheel index before this file)
+torch==2.5.1
+transformers==4.46.3
+tokenizers==0.20.3
+safetensors==0.4.5

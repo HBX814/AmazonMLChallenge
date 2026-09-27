@@ -1,8 +1,8 @@
-## Compliance audit (2026-09-26 17:44, audit_compliance.py)
+## Compliance audit (2026-09-27 18:32, audit_compliance.py)
 
-- Tree: `C:\Users\harsh\Downloads\AmazonMLChallenge\code\business_entity_resolution` (22 files, 14 Python)
+- Tree: `C:\Users\harsh\Downloads\AmazonMLChallenge\code\business_entity_resolution` (29 files, 17 Python)
 - requirements: `C:\Users\harsh\Downloads\AmazonMLChallenge\code\business_entity_resolution\requirements.txt` | manifest: `C:\Users\harsh\Downloads\AmazonMLChallenge\code\business_entity_resolution\models_manifest.json`
-- Models listed: 2; combined exact params 246,478 (cap 8,000,000,000; licenses allowed: MIT, Apache-2.0)
+- Models listed: 7; combined exact params 1,360,395,124 (cap 8,000,000,000; licenses allowed: MIT, Apache-2.0)
 - **Overall: PASS** (0 FAIL, 0 WARN)
 
 | # | Check | Result | Findings |
@@ -28,12 +28,21 @@
 | lightgbm | 4.7.0 | MIT | PASS |
 | sparse-dot-topn | 1.2.0 | Apache-2.0 | PASS |
 | psutil | 7.2.2 | BSD-3-Clause | PASS |
+| torch | 2.5.1 | BSD-3-Clause | PASS |
+| transformers | 4.46.3 | Apache-2.0 | PASS |
+| tokenizers | 0.20.3 | Apache-2.0 | PASS |
+| safetensors | 0.4.5 | Apache-2.0 | PASS |
 
 ### Models (models_manifest.json)
 
 | model | role | license | exact params | counted from files | revision | verdict |
 |---|---|---|---|---|---|---|
-| master-bolt/lightgbm-matcher | final pairwise matcher (the submitted model): calibrated p(same business) for each (s1, cand) pair | MIT | 208,978 | 208,978 | - | PASS |
-| master-bolt/lightgbm-candidate-priority | blocking helper: ranks each S1's candidate union before the 60-per-S1 cap (inputs = blocking pass flags / scores / ranks only) | MIT | 37,500 | 37,500 | - | PASS |
+| master-bolt/lightgbm-stage2 | final pairwise model: collective stage-2 re-scoring of every pair with stage-1 p >= 1e-3 (stage-1 features + within-S1 context + competition over all S1 + sibling similarities + cross-encoder logits); its calibrated p drives the decision | MIT | 30,866 | - | - | PASS |
+| master-bolt/lightgbm-matcher | stage-1 pairwise matcher: calibrated p(same business) for every candidate pair (98 features) | MIT | 153,571 | - | - | PASS |
+| master-bolt/cross-encoder-ce | cross-encoder 'ce': logit for (S1 text, candidate text) pairs with stage-1 p in [0.01, 0.99]; stage-2 feature | MIT | 107,007,361 | - | - | PASS |
+| master-bolt/cross-encoder-ce2 | cross-encoder 'ce2': logit for (S1 text, candidate text) pairs with stage-1 p in [0.01, 0.99]; stage-2 feature | Apache-2.0 | 567,755,777 | - | - | PASS |
+| master-bolt/lightgbm-candidate-priority | blocking helper: ranks each S1's candidate union before the 60-per-S1 cap (inputs = blocking pass flags / scores / ranks only) | MIT | 37,500 | - | - | PASS |
+| intfloat/multilingual-e5-small | pretrained backbone of cross-encoder 'ce' (first 6 of 12 layers kept, then fine-tuned by the team) | MIT | 117,654,272 | - | 614241f622f5 | PASS |
+| BAAI/bge-reranker-v2-m3 | pretrained backbone of cross-encoder 'ce2' (fine-tuned by the team) | Apache-2.0 | 567,755,777 | - | 953dc6f6f85a | PASS |
 
 RESULT: PASS

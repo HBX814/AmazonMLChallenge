@@ -1,0 +1,1 @@
+python infra/peek_schema.py

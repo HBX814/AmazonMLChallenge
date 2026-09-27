@@ -1,0 +1,1 @@
+python infra/ce_err.py --variant v1v2

@@ -1,0 +1,36 @@
+{
+ "train_s1_frac": 0.3,
+ "stage2": {
+  "enabled": true,
+  "guard": "G1"
+ },
+ "adapt": {
+  "method": "density_hs",
+  "rule": true
+ },
+ "crossenc": {
+  "enabled": true,
+  "band": [
+   0.01,
+   0.99
+  ],
+  "models": [
+   {
+    "name": "ce",
+    "model": "intfloat/multilingual-e5-small",
+    "layers": 1,
+    "epochs": 1.0,
+    "bs": 32,
+    "lr": 5e-05,
+    "train_buckets": [
+     300,
+     1000
+    ],
+    "aug_frac": 0.25,
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "continue_epochs": 0.5,
+    "continue_lr": 1e-05
+   }
+  ]
+ }
+}

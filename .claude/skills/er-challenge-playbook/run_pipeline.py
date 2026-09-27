@@ -7,7 +7,10 @@ Stages (each writes parquet under --work-dir and is skipped when its outputs exi
   prepare   TSV -> parquet cache; native-token dictionary learned from TRAIN links only; normalized frames per split/country
   block     candidates per split/country (same BlockingConfig for train and test); train candidates get `label`
   features  pairwise/context/competition/group features per split/country
-  train     LightGBM GroupKFold-by-S1 OOF + calibration; decision parameters chosen on OOF macro F0.5 (all train S1)
+  train     LightGBM GroupKFold-by-S1 OOF + calibration; decision parameters chosen on OOF macro F0.5 (all train S1);
+            then (cfg.stage2) the collective stage-2 model and (cfg.adapt) the shift-adaptation source priors
+  crossenc  (cfg.crossenc) fine-tune the transformer cross-encoders on TRAIN S1 outside the model sample and score the
+            uncertain-band pairs of the OOF sample and of the test set; their logits are stage-2 features
   predict   test scoring + exclusivity-aware per-S1 decisions
   write     output/candidate_pairs.tsv (exact scored pairs) + output/matching_results.tsv (subset), test_source1 order
 Countries are whatever labels exist in the data (France appears only in test) -- never a hard-coded list.
@@ -34,9 +37,10 @@ from ber import metric as M
 from ber import outputs as O
 from ber import stage2 as S2
 from ber import adapt as AD
+from ber import crossenc as CX
 from ber.config import PipelineConfig
 
-STAGES = ["prepare", "prio", "block", "features", "train", "predict", "write"]
+STAGES = ["prepare", "prio", "block", "features", "train", "crossenc", "predict", "write"]
 
 
 # ------------------------------------------------------------------------------------------------ utilities
@@ -291,10 +295,105 @@ def stage_train(a, cfg, log):
     mdir = work / "model"
     if not (mdir / "decision.json").exists() or a.force:
         _train_stage1(a, cfg, log)
+    if cfg.crossenc.enabled and not _ce_ready(work, cfg):
+        log("train: stage 2 / adaptation run at the end of the crossenc stage (cross-encoder scores missing)")
+        return
+    _train_after_stage1(a, cfg, log)
+
+
+def _train_after_stage1(a, cfg, log):
+    mdir = Path(a.work_dir) / "model"
     if cfg.stage2.enabled and (not (mdir / "stage2" / "decision_s2.json").exists() or a.force):
         _train_stage2(a, cfg, log)
     if cfg.adapt.method != "none" and (not (mdir / "adapt_source.json").exists() or a.force):
         _fit_adapt_source(a, cfg, log)
+
+
+# ------------------------------------------------------------------------------------------------ cross-encoders
+def _ce_dir(work: Path) -> Path:
+    return work / "crossenc"
+
+
+def _ce_models(cfg):
+    return [CX.as_model(m) for m in cfg.crossenc.models] if cfg.crossenc.enabled else []
+
+
+def _ce_ready(work: Path, cfg) -> bool:
+    return all((_ce_dir(work) / f"scores_{m.name}.parquet").exists() for m in _ce_models(cfg))
+
+
+def _ce_join(fr: pl.DataFrame, work: Path, cfg, split: str, country: str) -> pl.DataFrame:
+    for m in _ce_models(cfg):
+        sc = pl.read_parquet(_ce_dir(work) / f"scores_{m.name}.parquet").filter(
+            (pl.col("split") == split) & (pl.col("country") == country))
+        fr = CX.add_features(fr, sc, m.name)
+    return fr
+
+
+def stage_crossenc(a, cfg, log):
+    """Cross-encoders (ber/crossenc.py): stage-1 p of every train pair (cached) -> per model: fine-tune on the band
+    pairs of its train_buckets S1 -> score the band pairs of the OOF sample (OOF p) and of the test set (final-model p)
+    -> then stage 2 (+ adaptation) with the cross-encoder features."""
+    if not cfg.crossenc.enabled:
+        return
+    work = Path(a.work_dir)
+    cdir, mdir = _ce_dir(work), work / "model"
+    cdir.mkdir(parents=True, exist_ok=True)
+    bundle = MD.load_bundle(str(mdir))
+    lo, hi = cfg.crossenc.band
+    band = pl.col("p").is_between(lo, hi)
+    models = _ce_models(cfg)
+    n_samp = int(round((cfg.train_s1_frac or 1.0) * 1000))
+    for m in models:
+        if m.train_buckets[0] < n_samp:
+            raise ValueError(f"crossenc {m.name}: train_buckets {m.train_buckets} overlap the model sample [0, {n_samp})")
+    trc = _countries(work, "train", only=False)
+    for c in trc:                                   # final-model stage-1 p of every train pair (also used by stage 2)
+        path = cdir / f"pfull_train_{_safe(c)}.parquet"
+        if not path.exists() or a.force:
+            t = time.time()
+            S2.stage1_predict_stream(bundle, str(work / "feats" / f"train_{_safe(c)}.parquet"),
+                                     keep_label=True).write_parquet(path)
+            log(f"crossenc: stage-1 p of every train/{c} pair in {time.time() - t:.0f}s")
+    ev_path = cdir / "eval_pairs.parquet"
+    if not ev_path.exists() or a.force:
+        oof = pl.read_parquet(mdir / "oof.parquet").select("s1", "cand", "p")
+        meta = _train_s1_meta(work, cfg)
+        parts = []
+        for c in trc:
+            e = oof.join(meta.filter(pl.col("country") == c).select("s1"), on="s1", how="semi").filter(band)
+            parts.append(CX.attach_texts(e, str(work / "norm" / f"train_{_safe(c)}_s1.parquet"),
+                                         str(work / "norm" / f"train_{_safe(c)}_pool.parquet"))
+                         .with_columns(pl.lit("oof").alias("split"), pl.lit(c).alias("country")))
+        for c in _countries(work, "test", only=False):
+            sc = MD.predict_matcher(bundle, pl.read_parquet(work / "feats" / f"test_{_safe(c)}.parquet")).filter(band)
+            parts.append(CX.attach_texts(sc, str(work / "norm" / f"test_{_safe(c)}_s1.parquet"),
+                                         str(work / "norm" / f"test_{_safe(c)}_pool.parquet"))
+                         .with_columns(pl.lit("test").alias("split"), pl.lit(c).alias("country")))
+        ev = pl.concat(parts, how="vertical_relaxed")
+        ev.write_parquet(ev_path)
+        log(f"crossenc: {ev.height:,} band pairs to score "
+            + str(ev.group_by("split", "country").len().sort("split", "country").rows()))
+    for m in models:
+        mpath = cdir / f"model_{m.name}"
+        if not (mpath / "crossenc_report.json").exists() or a.force:
+            parts = []
+            for c in trc:
+                pf = pl.read_parquet(cdir / f"pfull_train_{_safe(c)}.parquet",
+                                     columns=["s1", "cand", "label", "p"]).filter(band)
+                b = pl.Series(M.fold_of(pf["s1"], n_folds=1000, seed=cfg.seed + 7919))
+                pf = pf.filter((b >= m.train_buckets[0]) & (b < m.train_buckets[1]))
+                parts.append(CX.attach_texts(pf, str(work / "norm" / f"train_{_safe(c)}_s1.parquet"),
+                                             str(work / "norm" / f"train_{_safe(c)}_pool.parquet")))
+            CX.train(pl.concat(parts), m, str(mpath), log)
+        spath = cdir / f"scores_{m.name}.parquet"
+        if not spath.exists() or a.force:
+            ev = pl.read_parquet(ev_path)
+            t = time.time()
+            z = CX.score(str(mpath), ev, m.max_len, log)
+            ev.select("split", "country", "s1", "cand").with_columns(pl.Series("logit", z)).write_parquet(spath)
+            log(f"crossenc {m.name}: scored {ev.height:,} pairs in {time.time() - t:.0f}s")
+    _train_after_stage1(a, cfg, log)
 
 
 def _train_stage2(a, cfg, log):
@@ -309,6 +408,8 @@ def _train_stage2(a, cfg, log):
     lam = float(dec1.get("lam_missing", max(0.0, (gt.height - int(oof["label"].sum())) / max(len(ids), 1))))
     cfg2 = S2.Stage2Config(orig_features=list(bundle["feature_columns"]), floor=cfg.stage2.floor, lam_missing=lam,
                            empty_bias=float(dec1.get("empty_bias", 2.0)), guard=cfg.stage2.guard)
+    ce_names = CX.feature_names(_ce_models(cfg))       # stage-2 fit sees the CE columns; the frame is built without
+    cfg2_fit = S2.Stage2Config(**{**cfg2.__dict__, "orig_features": list(cfg2.orig_features) + ce_names})
     frames = []
     for c in _countries(work, "train", only=False):
         t = time.time()
@@ -316,16 +417,21 @@ def _train_stage2(a, cfg, log):
         pop = meta.filter(pl.col("country") == c).select("s1")
         own = oof.join(pop, on="s1", how="semi").select("s1", "cand", "p", "p_raw", "label")
         # competition needs EVERY claimant of a record: final-model stage-1 p for the train S1 outside the sample
-        rest = S2.stage1_predict_stream(bundle, fpath, skip_s1=pop, keep_label=True)
+        cached = _ce_dir(work) / f"pfull_train_{_safe(c)}.parquet"
+        if cached.exists():                             # written by the crossenc stage (same final stage-1 model)
+            rest = pl.read_parquet(cached).join(pop, on="s1", how="anti", maintain_order="left")
+        else:
+            rest = S2.stage1_predict_stream(bundle, fpath, skip_s1=pop, keep_label=True)
         scored = pl.concat([own, rest.select(own.columns)], how="vertical_relaxed")
         del rest
         fr = S2.build_frame(scored, fpath, str(work / "norm" / f"train_{_safe(c)}_pool.parquet"), cfg2, population=pop)
+        fr = _ce_join(fr, work, cfg, "oof", c)
         log(f"stage2 frame {c}: {scored.height:,} scored pairs (all S1) -> {fr.height:,} re-scored rows in {time.time() - t:.0f}s")
         frames.append(fr)
         del scored
     frame = pl.concat(frames, how="vertical_relaxed")
     del frames
-    b2, oof2 = S2.fit(frame, cfg2)
+    b2, oof2 = S2.fit(frame, cfg2_fit)
     del frame
     S2.save_bundle(b2, str(sdir))
     merged = S2.merge(oof.select("s1", "cand", "label", "p"), oof2.select("s1", "cand", "p"))
@@ -387,7 +493,9 @@ def _train_stage1(a, cfg, log, mdir=None):
 
 def stage_predict(a, cfg, log):
     """Test scoring per country: stage-1 matcher -> [stage-2 re-scoring over the whole country frame] ->
-    [label-free shift adaptation] -> exclusivity-aware per-S1 decision (parameters chosen on train OOF)."""
+    [label-free shift adaptation] -> [candidate pruning: cfg.candidate_prune_p1] -> exclusivity-aware per-S1 decision
+    (parameters chosen on train OOF). With pruning, the stage-1 matcher is the LAST blocking filter: only pairs with
+    stage-1 p >= candidate_prune_p1 reach the decision, and exactly those pairs are written to candidate_pairs.tsv."""
     work = Path(a.work_dir)
     mdir = work / "model"
     bundle = MD.load_bundle(str(mdir))
@@ -396,6 +504,8 @@ def stage_predict(a, cfg, log):
     if cfg.stage2.enabled:
         b2 = S2.load_bundle(str(mdir / "stage2"))
         cfg2 = S2.stage2_config_from_bundle(b2)
+        ce_names = set(CX.feature_names(_ce_models(cfg)))
+        cfg2.orig_features = [f for f in (cfg2.orig_features or []) if f not in ce_names]
         best = json.load(open(mdir / "stage2" / "decision_s2.json", encoding="utf-8"))["best"]
     if cfg.adapt.method != "none":
         src, acfg = AD.load_source(str(mdir / "adapt_source.json")), _adapt_cfg(cfg)
@@ -410,9 +520,13 @@ def stage_predict(a, cfg, log):
         s1p, poolp = work / "norm" / f"test_{_safe(c)}_s1.parquet", work / "norm" / f"test_{_safe(c)}_pool.parquet"
         n_s1 = pl.scan_parquet(s1p).select(pl.len()).collect().item()
         scored = MD.predict_matcher(bundle, pl.read_parquet(fpath))
+        n_all = scored.height
+        keep = (scored.filter(pl.col("p") >= cfg.candidate_prune_p1).select("s1", "cand")
+                if cfg.candidate_prune_p1 else None)             # final candidate set = stage-1 filter output
         msg = f"stage-1 links-ready ({time.time() - t:.0f}s)"
         if b2 is not None:
             fr = S2.build_frame(scored, str(fpath), str(poolp), cfg2, stage1_bundle=bundle)
+            fr = _ce_join(fr, work, cfg, "test", c)
             scored = S2.predict(b2, fr, scored=scored).select("s1", "cand", "p")
             msg += f"; stage-2 re-scored {fr.height:,} rows ({time.time() - t:.0f}s)"
             del fr
@@ -423,6 +537,11 @@ def stage_predict(a, cfg, log):
             est.write_parquet(work / "pred" / f"test_{_safe(c)}_adapt.parquet")
             scored = tagged.select("s1", "cand", "p")
             msg += f"; adapted {int((est['factor'] != 1.0).sum())} classes"
+        if keep is not None:
+            scored = scored.join(keep, on=["s1", "cand"], how="semi", maintain_order="left")
+            if tagged is not None:
+                tagged = tagged.join(keep, on=["s1", "cand"], how="semi", maintain_order="left")
+            msg += f"; candidates {n_all:,} -> {scored.height:,} (stage-1 p >= {cfg.candidate_prune_p1})"
         links = D.select_links(scored, best["method"], exclusivity=best.get("exclusivity", cfg.decision.exclusivity), **kw)
         if cfg.adapt.rule:
             if tagged is None:
@@ -473,7 +592,7 @@ def main(argv=None):
     log = Log(work)
     todo = STAGES if a.stage == "all" else [a.stage]
     fns = {"prepare": stage_prepare, "prio": stage_prio, "block": stage_block, "features": stage_features,
-           "train": stage_train, "predict": stage_predict, "write": stage_write}
+           "train": stage_train, "crossenc": stage_crossenc, "predict": stage_predict, "write": stage_write}
     for s in todo:
         t = time.time()
         log(f"=== stage {s} start")

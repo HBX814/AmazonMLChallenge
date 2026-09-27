@@ -1,0 +1,1 @@
+python infra/ce_s2_tune.py --variants ce4,ce8,ce8_lr05

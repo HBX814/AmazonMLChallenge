@@ -1,0 +1,1 @@
+python .claude/skills/er-challenge-playbook/smoke_test.py --n-jobs 8 --config /root/proj/code/business_entity_resolution/configs/smoke_crossenc.json

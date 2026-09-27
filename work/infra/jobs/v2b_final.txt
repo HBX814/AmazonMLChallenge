@@ -1,0 +1,3 @@
+python infra/ce_s2_v2.py --variants v1v2 --ce2-file kg_scores_v2b.parquet --out s2_v2bf
+python infra/ce_apply_v2.py --tag ce2b --variant v1v2 --s2-dir s2_v2bf --ce2-file kg_scores_v2b.parquet
+cd /tmp && python /root/proj/student_resource/utils/validate_submission.py --candidate NONE --test-dir /root/proj/student_resource/dataset/test --check-ids --matching /vol/output_ce2b_hsr_rule/matching_results.tsv || echo VALIDATION_RETURNED_NONZERO
