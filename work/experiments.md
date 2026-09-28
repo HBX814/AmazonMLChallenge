@@ -312,3 +312,16 @@ smaller candidate sets per S1 rank higher)
   Test file via ce_apply_v2.py (not the pipeline, full candidates): output_probes/ce2b_epoch2_hsr_rule (links FR 872,356 /
   IN 2,706,900 / US 2,231,437), official validator PASS, 23:41 IST. NOT in the zip; the user was advised to keep the zipped v6
   file as the last LB upload.
+### #21 final package fix (2026-09-29 01:00-01:45 IST)
+- Rules: the zipped matching_results.tsv must be IDENTICAL to the uploaded file of the BEST submission. Uploads were
+  ce_hsr_rule 0.981499, ce2_hsr_rule **0.983714 (best)**, p3 0.983705 -> the zip must hold ce2_hsr_rule (sha 6448e77d...),
+  not v6 (never uploaded).
+- run_pipeline.stage_predict: the candidate filter (candidate_prune_p1) now applies AFTER the decision: stage-2 / cross-encoders
+  still score exactly the p1 >= 0.001 set (= stage-2 floor), the list selection is unchanged, then candidates and links are
+  restricted to that set (links outside dropped + logged: 0).
+- Run v7 (jobs/final_v7.txt, /vol/work_v5 -> /vol/output_v7): matching **byte-identical to the 0.983714 upload**
+  (MATCHING_IDENTICAL_TO_LB_0.983714), candidates identical to v6 (8,689,809 pairs, 5.02 per S1, sha db613c57...); links FR
+  875,090 / IN 2,706,468 / US 2,231,652; check_submission (strict, --check-ids) PASS; official validator with candidates PASS.
+- README rewritten in detail (requirements, install, one-command + step-by-step with times/RAM, GPU stage, config reference,
+  expected outputs + sha256, validation, provenance, determinism, troubleshooting, code map); Documentation corrected.
+- Zip rebuilt (all gates PASS, 24 files, 99,496,862 B, sha 84d95685...): D:\MasterBolt\Master_Bolt_submission.zip = submission/.

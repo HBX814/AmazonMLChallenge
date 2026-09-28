@@ -493,9 +493,12 @@ def _train_stage1(a, cfg, log, mdir=None):
 
 def stage_predict(a, cfg, log):
     """Test scoring per country: stage-1 matcher -> [stage-2 re-scoring over the whole country frame] ->
-    [label-free shift adaptation] -> [candidate pruning: cfg.candidate_prune_p1] -> exclusivity-aware per-S1 decision
-    (parameters chosen on train OOF). With pruning, the stage-1 matcher is the LAST blocking filter: only pairs with
-    stage-1 p >= candidate_prune_p1 reach the decision, and exactly those pairs are written to candidate_pairs.tsv."""
+    [label-free shift adaptation] -> exclusivity-aware per-S1 decision (parameters chosen on train OOF) ->
+    [candidate filter: cfg.candidate_prune_p1]. With the filter, the stage-1 matcher is the LAST blocking step: the
+    candidate set written to candidate_pairs.tsv = pairs with stage-1 p >= candidate_prune_p1, which (with the value
+    equal to the stage-2 floor, 1e-3) is exactly the set the stage-2 model and the cross-encoders run inference on.
+    The per-S1 list selection also counts the probability mass (< candidate_prune_p1 each) of the filtered-out pairs
+    in its expected-F bookkeeping; none of them can be selected, and every link is guaranteed to be a candidate."""
     work = Path(a.work_dir)
     mdir = work / "model"
     bundle = MD.load_bundle(str(mdir))
@@ -537,11 +540,6 @@ def stage_predict(a, cfg, log):
             est.write_parquet(work / "pred" / f"test_{_safe(c)}_adapt.parquet")
             scored = tagged.select("s1", "cand", "p")
             msg += f"; adapted {int((est['factor'] != 1.0).sum())} classes"
-        if keep is not None:
-            scored = scored.join(keep, on=["s1", "cand"], how="semi", maintain_order="left")
-            if tagged is not None:
-                tagged = tagged.join(keep, on=["s1", "cand"], how="semi", maintain_order="left")
-            msg += f"; candidates {n_all:,} -> {scored.height:,} (stage-1 p >= {cfg.candidate_prune_p1})"
         links = D.select_links(scored, best["method"], exclusivity=best.get("exclusivity", cfg.decision.exclusivity), **kw)
         if cfg.adapt.rule:
             if tagged is None:
@@ -549,6 +547,12 @@ def stage_predict(a, cfg, log):
             n0 = links.height
             links = AD.targeted_rule(links, tagged.select("s1", "cand", "p", "hn_rel"))
             msg += f"; rule dropped {n0 - links.height:,} HARD links"
+        if keep is not None:                          # candidate set = stage-1 filter output; links must be candidates
+            n_lk = links.height
+            links = links.join(keep.rename({"cand": "mid"}), on=["s1", "mid"], how="semi", maintain_order="left")
+            scored = scored.join(keep, on=["s1", "cand"], how="semi", maintain_order="left")
+            msg += (f"; candidates {n_all:,} -> {scored.height:,} (stage-1 p >= {cfg.candidate_prune_p1}), "
+                    f"{n_lk - links.height} links outside them dropped")
         scored.write_parquet(work / "pred" / f"test_{_safe(c)}_scored.parquet")
         links.write_parquet(out)
         log(f"predict test/{c}: {scored.height:,} scored, {links.height:,} links, {links.height / max(n_s1, 1):.2f} "
